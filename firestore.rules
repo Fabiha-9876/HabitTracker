@@ -1,0 +1,39 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users can only read/write their own habit data
+    match /users/{userId}/habits/{date} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      // Validate the habit document structure on write
+      allow create, update: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.keys().hasOnly([
+          'branWater', 'fenugreekWater', 'supplements',
+          'prayers', 'gym', 'fruits', 'studyHours',
+          'completedCount', 'updatedAt'
+        ])
+        && request.resource.data.branWater is bool
+        && request.resource.data.fenugreekWater is bool
+        && request.resource.data.supplements is bool
+        && request.resource.data.gym is bool
+        && request.resource.data.fruits is bool
+        && request.resource.data.studyHours is number
+        && request.resource.data.completedCount is number
+        && request.resource.data.completedCount >= 0
+        && request.resource.data.completedCount <= 11
+        && request.resource.data.studyHours >= 0
+        && request.resource.data.prayers is map
+        && request.resource.data.prayers.keys().hasOnly([
+          'fajr', 'dhuhr', 'asr', 'maghrib', 'isha'
+        ]);
+    }
+
+    // Deny everything else
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
